@@ -66,8 +66,8 @@ export default function ExpenseTrendChart({
                     />
 
                     <Tooltip
-                        formatter={(value: number, name) => [
-                            `₹ ${value.toLocaleString("en-IN")}`,
+                        formatter={(value, name) => [
+                            `₹ ${Number(value ?? 0).toLocaleString("en-IN")}`,
                             name,
                         ]}
                         contentStyle={{

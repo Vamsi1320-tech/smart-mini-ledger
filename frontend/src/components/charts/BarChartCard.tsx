@@ -82,8 +82,8 @@ export default function BarChartCard({ data }: Props) {
                             labelStyle={{
                                 color: isDark ? "#FFFFFF" : "#111827",
                             }}
-                            formatter={(value: number, name) => [
-                                `₹ ${value.toLocaleString("en-IN")}`,
+                            formatter={(value, name) => [
+                                `₹ ${Number(value ?? 0).toLocaleString("en-IN")}`,
                                 name,
                             ]}
                         />

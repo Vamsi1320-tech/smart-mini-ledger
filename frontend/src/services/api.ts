@@ -1,7 +1,9 @@
 import axios from "axios";
 
 const api = axios.create({
-    baseURL: "http://127.0.0.1:8000",
+    baseURL:
+        import.meta.env.VITE_API_URL ||
+        "http://127.0.0.1:8000",
     timeout: 10000,
 });
 
@@ -16,11 +18,6 @@ api.interceptors.request.use(
             config.headers.Authorization = `Bearer ${token}`;
         }
 
-        console.log("=================================");
-        console.log("API Request:", config.method?.toUpperCase(), config.url);
-        console.log("Token:", token);
-        console.log("=================================");
-
         return config;
     },
     (error) => Promise.reject(error)
@@ -34,19 +31,11 @@ api.interceptors.response.use(
 
         const status = error.response?.status;
 
-        console.error("=================================");
-        console.error("API Error:", status);
-        console.error(error.response?.data);
-        console.error("=================================");
-
-        // JWT expired or invalid
         if (status === 401 && !isRedirecting) {
 
             isRedirecting = true;
 
             localStorage.removeItem("token");
-
-            alert("Your session has expired. Please login again.");
 
             window.location.replace("/");
         }

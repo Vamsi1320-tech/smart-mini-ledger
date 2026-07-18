@@ -74,8 +74,8 @@ export default function PieChartCard({ data }: Props) {
                         </Pie>
 
                         <Tooltip
-                            formatter={(value: number) => [
-                                `₹ ${value.toLocaleString("en-IN")}`,
+                            formatter={(value) => [
+                                `₹ ${Number(value ?? 0).toLocaleString("en-IN")}`,
                                 "Amount",
                             ]}
                             contentStyle={{

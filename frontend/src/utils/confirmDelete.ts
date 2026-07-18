@@ -13,7 +13,6 @@ export async function confirmDelete(item: string) {
         reverseButtons: true,
         background: "#1e293b",
         color: "#ffffff",
-        borderRadius: "14px",
     });
 
     return result.isConfirmed;

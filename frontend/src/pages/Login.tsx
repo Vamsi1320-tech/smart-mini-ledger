@@ -38,7 +38,7 @@ export default function Login() {
                 response.data.access_token
             );
 
-            window.location.replace("/dashboard");
+            navigate("/dashboard");
         } catch (err) {
             console.error(err);
             alert("Invalid email or password");

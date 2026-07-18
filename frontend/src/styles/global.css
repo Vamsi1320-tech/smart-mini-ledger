@@ -1,0 +1,18 @@
+@import "tailwindcss";
+
+/* Enable dark mode using the .dark class */
+@custom-variant dark (&:where(.dark, .dark *));
+
+html,
+body,
+#root {
+    min-height: 100%;
+}
+
+body {
+    @apply bg-slate-100 text-slate-900 transition-colors duration-300;
+}
+
+.dark body {
+    @apply bg-slate-900 text-slate-100;
+}

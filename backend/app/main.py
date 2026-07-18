@@ -13,7 +13,7 @@ from app.routers.transaction import router as transaction_router
 from app.routers.dashboard import router as dashboard_router
 from app.routers.budget import router as budget_router
 
-# Base.metadata.create_all(bind=engine)
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="Smart Mini Ledger API",

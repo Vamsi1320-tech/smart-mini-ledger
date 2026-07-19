@@ -63,6 +63,7 @@ type MonthlySummary = {
 };
 
 export default function Dashboard() {
+
     const navigate = useNavigate();
 
     const [summary, setSummary] = useState<Summary | null>(null);
@@ -74,47 +75,199 @@ export default function Dashboard() {
     const [openModal, setOpenModal] = useState(false);
 
     const [selectedTransaction, setSelectedTransaction] =
-        useState<Transaction | undefined>(undefined);
+        useState<Transaction | undefined>();
 
     const [isEdit, setIsEdit] = useState(false);
 
     const [loading, setLoading] = useState(true);
+
     const [error, setError] = useState("");
 
     const [budgetModalOpen, setBudgetModalOpen] = useState(false);
 
     const [selectedBudget, setSelectedBudget] =
-        useState<Budget | undefined>(undefined);
+        useState<Budget | undefined>();
 
     const [isBudgetEdit, setIsBudgetEdit] = useState(false);
+
+    /* ===========================================================
+       Browser Notification Helpers
+    ============================================================ */
+
+    const showBrowserNotification = (
+        title: string,
+        body: string
+    ) => {
+
+        if (!("Notification" in window)) return;
+
+        if (Notification.permission !== "granted") return;
+
+        new Notification(title, {
+            body,
+        });
+
+    };
+
+    const notifyOnce = (
+        key: string,
+        title: string,
+        body: string
+    ) => {
+
+        const alreadyShown = localStorage.getItem(key);
+
+        if (alreadyShown) return;
+
+        showBrowserNotification(title, body);
+
+        localStorage.setItem(key, "true");
+
+    };
+
+    /* ===========================================================
+       Notification Permission
+    ============================================================ */
+
+    useEffect(() => {
+
+        if (
+            "Notification" in window &&
+            Notification.permission === "default"
+        ) {
+            Notification.requestPermission();
+        }
+
+    }, []);
+
+    /* ===========================================================
+       Load Dashboard
+    ============================================================ */
 
     const loadData = async () => {
 
         setLoading(true);
+
         setError("");
 
         try {
 
             const [
+
                 summaryData,
+
                 transactionData,
+
                 categorySummary,
+
                 monthlySummary,
+
                 budgetData,
+
             ] = await Promise.all([
+
                 getDashboardSummary(),
+
                 getTransactions(),
+
                 getCategorySummary(),
+
                 getMonthlySummary(),
+
                 getBudgets(),
+
             ]);
 
             setSummary(summaryData);
-            console.log("Dashboard Summary:", summaryData);
+
             setTransactions(transactionData);
+
             setCategoryData(categorySummary);
+
             setMonthlyData(monthlySummary);
+
             setBudgets(budgetData);
+
+            /* ===============================================
+               Large Expense Notification
+            =============================================== */
+
+            const latestExpense = transactionData
+                .filter((t) => t.transaction_type === "expense")
+                .sort(
+                    (a, b) =>
+                        new Date(b.created_at).getTime() -
+                        new Date(a.created_at).getTime()
+                )[0];
+
+            if (
+                latestExpense &&
+                latestExpense.amount >= 10000
+            ) {
+
+                notifyOnce(
+
+                    `expense-${latestExpense.id}`,
+
+                    "💸 Large Expense",
+
+                    `${latestExpense.title} - ₹${latestExpense.amount.toLocaleString()}`
+
+                );
+
+            }
+
+            /* ===============================================
+               Budget Notifications
+            =============================================== */
+
+            budgetData.forEach((budget) => {
+
+                const spent = transactionData
+                    .filter(
+                        (t) =>
+                            t.transaction_type === "expense" &&
+                            t.category === budget.category
+                    )
+                    .reduce(
+                        (sum, t) => sum + t.amount,
+                        0
+                    );
+
+                const percentage =
+                    (spent / budget.limit) * 100;
+
+                if (percentage >= 100) {
+
+                    notifyOnce(
+
+                        `budget-exceeded-${budget.id}`,
+
+                        "🚨 Budget Exceeded",
+
+                        `${budget.category} budget exceeded.`
+
+                    );
+
+                }
+
+                else if (percentage >= 80) {
+
+                    notifyOnce(
+
+                        `budget-warning-${budget.id}`,
+
+                        "⚠ Budget Warning",
+
+                        `${budget.category} budget is ${percentage.toFixed(
+                            0
+                        )}% used.`
+
+                    );
+
+                }
+
+            });
 
         } catch (err: any) {
 
@@ -124,11 +277,14 @@ export default function Dashboard() {
 
                 localStorage.removeItem("token");
 
-                toast.error("Session expired. Please login again.");
+                toast.error(
+                    "Session expired. Please login again."
+                );
 
                 navigate("/");
 
                 return;
+
             }
 
             setError("Failed to load dashboard.");
@@ -167,7 +323,9 @@ export default function Dashboard() {
 
     };
 
-    const handleEdit = (transaction: Transaction) => {
+    const handleEdit = (
+        transaction: Transaction
+    ) => {
 
         setSelectedTransaction(transaction);
 
@@ -176,6 +334,9 @@ export default function Dashboard() {
         setOpenModal(true);
 
     };
+    /* ===========================================================
+       Transaction Delete
+    ============================================================ */
 
     const handleDelete = async (id: number) => {
 
@@ -199,7 +360,7 @@ export default function Dashboard() {
 
             await deleteTransaction(id);
 
-            toast.success("Transaction deleted successfully!");
+            toast.success("Transaction deleted successfully.");
 
             loadData();
 
@@ -219,11 +380,15 @@ export default function Dashboard() {
 
             }
 
-            toast.error("Failed to delete transaction.");
+            toast.error("Unable to delete transaction.");
 
         }
 
     };
+
+    /* ===========================================================
+       Transaction Modal
+    ============================================================ */
 
     const handleClose = () => {
 
@@ -234,6 +399,10 @@ export default function Dashboard() {
         setIsEdit(false);
 
     };
+
+    /* ===========================================================
+       Budget Handlers
+    ============================================================ */
 
     const handleAddBudget = () => {
 
@@ -258,17 +427,29 @@ export default function Dashboard() {
     const handleDeleteBudget = async (id: number) => {
 
         const result = await Swal.fire({
+
             title: "Delete Budget?",
+
             text: "This action cannot be undone.",
+
             icon: "warning",
+
             showCancelButton: true,
+
             confirmButtonColor: "#dc2626",
+
             cancelButtonColor: "#64748b",
+
             confirmButtonText: "Delete",
+
             cancelButtonText: "Cancel",
+
             reverseButtons: true,
+
             background: "#1e293b",
+
             color: "#ffffff",
+
         });
 
         if (!result.isConfirmed) return;
@@ -277,7 +458,17 @@ export default function Dashboard() {
 
             await deleteBudget(id);
 
-            toast.success("Budget deleted successfully!");
+            toast.success("Budget deleted successfully.");
+
+            /* Remove shown notifications for this budget */
+
+            localStorage.removeItem(
+                `budget-warning-${id}`
+            );
+
+            localStorage.removeItem(
+                `budget-exceeded-${id}`
+            );
 
             loadData();
 
@@ -285,7 +476,7 @@ export default function Dashboard() {
 
             console.error(err);
 
-            toast.error("Failed to delete budget.");
+            toast.error("Unable to delete budget.");
 
         }
 
@@ -301,6 +492,10 @@ export default function Dashboard() {
 
     };
 
+    /* ===========================================================
+       Loading Screen
+    ============================================================ */
+
     if (loading) {
 
         return (
@@ -312,8 +507,16 @@ export default function Dashboard() {
                     <div className="mx-auto h-14 w-14 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
 
                     <h2 className="mt-6 text-2xl font-bold text-slate-700 dark:text-white">
+
                         Loading Dashboard...
+
                     </h2>
+
+                    <p className="mt-2 text-slate-500 dark:text-slate-400">
+
+                        Preparing your financial overview...
+
+                    </p>
 
                 </div>
 
@@ -322,6 +525,10 @@ export default function Dashboard() {
         );
 
     }
+
+    /* ===========================================================
+       Error Screen
+    ============================================================ */
 
     if (error || !summary) {
 
@@ -332,8 +539,16 @@ export default function Dashboard() {
                 <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-xl dark:bg-slate-800">
 
                     <h2 className="text-2xl font-bold text-red-600 dark:text-red-400">
+
                         {error || "Unable to load dashboard"}
+
                     </h2>
+
+                    <p className="mt-3 text-slate-500 dark:text-slate-400">
+
+                        Please check your internet connection or try again.
+
+                    </p>
 
                     <button
                         onClick={loadData}
@@ -364,7 +579,7 @@ export default function Dashboard() {
 
                     <div>
 
-                        <h1 className="text-3xl font-bold text-slate-900 md:text-4xl dark:text-white">
+                        <h1 className="text-3xl font-bold md:text-4xl">
                             Dashboard
                         </h1>
 
@@ -374,7 +589,7 @@ export default function Dashboard() {
 
                     </div>
 
-                    <div className="text-sm text-slate-500 dark:text-slate-400">
+                    <div className="rounded-xl bg-white px-4 py-2 text-sm shadow dark:bg-slate-800">
 
                         {new Date().toLocaleDateString("en-IN", {
                             weekday: "long",
@@ -387,7 +602,7 @@ export default function Dashboard() {
 
                 </div>
 
-                {/* Summary Cards */}
+                {/* Summary */}
 
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
 
@@ -410,18 +625,44 @@ export default function Dashboard() {
 
                 {/* Budget Analytics */}
 
-                <div className="mt-10">
+                <section className="mt-10">
 
-                    <BudgetAnalytics
-                        budgets={budgets}
-                        transactions={transactions}
-                    />
+                    <h2 className="mb-4 text-2xl font-semibold">
+                        Budget Analytics
+                    </h2>
 
-                </div>
+                    {budgets.length > 0 ? (
+
+                        <BudgetAnalytics
+                            budgets={budgets}
+                            transactions={transactions}
+                        />
+
+                    ) : (
+
+                        <div className="rounded-2xl bg-white p-10 text-center shadow dark:bg-slate-800">
+
+                            <h3 className="text-xl font-semibold">
+                                💰 No Budgets Yet
+                            </h3>
+
+                            <p className="mt-2 text-slate-500">
+                                Create your first monthly budget to track spending.
+                            </p>
+
+                        </div>
+
+                    )}
+
+                </section>
 
                 {/* Financial Insights */}
 
-                <div className="mt-10">
+                <section className="mt-10">
+
+                    <h2 className="mb-4 text-2xl font-semibold">
+                        Financial Insights
+                    </h2>
 
                     <FinancialInsights
                         budgets={budgets}
@@ -430,58 +671,103 @@ export default function Dashboard() {
                         totalExpense={summary.total_expense}
                     />
 
-                </div>
+                </section>
 
                 {/* Charts */}
 
-                <div className="mt-10 space-y-8">
+                <section className="mt-10">
 
-                    <BarChartCard
-                        data={monthlyData}
-                    />
+                    <h2 className="mb-4 text-2xl font-semibold">
+                        Spending Trends
+                    </h2>
 
-                    <ExpenseTrendChart
-                        data={monthlyData}
-                    />
+                    <div className="space-y-8">
 
-                </div>
+                        <BarChartCard
+                            data={monthlyData}
+                        />
 
-                {/* Pie Chart */}
+                        <ExpenseTrendChart
+                            data={monthlyData}
+                        />
 
-                <div className="mt-8">
+                    </div>
+
+                </section>
+
+                {/* Category Breakdown */}
+
+                <section className="mt-10">
+
+                    <h2 className="mb-4 text-2xl font-semibold">
+                        Expense Categories
+                    </h2>
 
                     <PieChartCard
                         data={categoryData}
                     />
 
-                </div>
+                </section>
 
                 {/* Budget Planner */}
 
-                <div className="mt-10 overflow-hidden rounded-2xl">
+                <section className="mt-10">
 
-                    <BudgetPlanner
-                        budgets={budgets}
-                        transactions={transactions}
-                        onAdd={handleAddBudget}
-                        onEdit={handleEditBudget}
-                        onDelete={handleDeleteBudget}
-                    />
+                    <div className="overflow-hidden rounded-2xl transition hover:shadow-xl">
 
-                </div>
+                        <BudgetPlanner
+                            budgets={budgets}
+                            transactions={transactions}
+                            onAdd={handleAddBudget}
+                            onEdit={handleEditBudget}
+                            onDelete={handleDeleteBudget}
+                        />
+
+                    </div>
+
+                </section>
 
                 {/* Transactions */}
 
-                <div className="mt-10 overflow-hidden rounded-2xl">
+                <section className="mt-10">
 
-                    <TransactionTable
-                        transactions={transactions}
-                        onAdd={handleAdd}
-                        onEdit={handleEdit}
-                        onDelete={handleDelete}
-                    />
+                    {transactions.length > 0 ? (
 
-                </div>
+                        <div className="overflow-hidden rounded-2xl transition hover:shadow-xl">
+
+                            <TransactionTable
+                                transactions={transactions}
+                                onAdd={handleAdd}
+                                onEdit={handleEdit}
+                                onDelete={handleDelete}
+                            />
+
+                        </div>
+
+                    ) : (
+
+                        <div className="rounded-2xl bg-white p-12 text-center shadow dark:bg-slate-800">
+
+                            <h3 className="text-2xl font-bold">
+                                📊 No Transactions Yet
+                            </h3>
+
+                            <p className="mt-3 text-slate-500">
+                                Start by adding your first income or expense.
+                            </p>
+
+                            <button
+                                onClick={handleAdd}
+                                className="mt-6 rounded-xl bg-blue-600 px-6 py-3 text-white transition hover:bg-blue-700"
+                            >
+                                + Add Transaction
+                            </button>
+
+                        </div>
+
+                    )}
+
+                </section>
 
                 {/* Transaction Modal */}
 
@@ -508,5 +794,4 @@ export default function Dashboard() {
         </>
 
     );
-
 }

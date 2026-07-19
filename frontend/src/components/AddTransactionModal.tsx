@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
+import toast from "react-hot-toast";
 
 import {
     addTransaction,
@@ -38,14 +39,23 @@ export default function AddTransactionModal({
     transaction,
     isEdit = false,
 }: Props) {
+
     const {
         register,
         handleSubmit,
         reset,
+        formState: {
+            errors,
+            isSubmitting,
+        },
     } = useForm<TransactionForm>();
 
+    /* ------------------------- Populate Form ------------------------- */
+
     useEffect(() => {
+
         if (transaction) {
+
             reset({
                 title: transaction.title,
                 amount: transaction.amount,
@@ -53,49 +63,112 @@ export default function AddTransactionModal({
                 category: transaction.category,
                 created_at: transaction.created_at.substring(0, 10),
             });
+
         } else {
+
             reset({
                 title: "",
                 amount: 0,
                 transaction_type: "income",
                 category: "",
-                created_at: new Date().toISOString().split("T")[0],
+                created_at: new Date()
+                    .toISOString()
+                    .split("T")[0],
             });
+
         }
+
     }, [transaction, reset]);
+
+    /* ------------------------- ESC Key ------------------------- */
+
+    useEffect(() => {
+
+        const handleEsc = (event: KeyboardEvent) => {
+
+            if (event.key === "Escape") {
+                onClose();
+            }
+
+        };
+
+        window.addEventListener("keydown", handleEsc);
+
+        return () =>
+            window.removeEventListener("keydown", handleEsc);
+
+    }, [onClose]);
 
     if (!open) return null;
 
+    /* ------------------------- Submit ------------------------- */
+
     const onSubmit = async (data: TransactionForm) => {
+
         try {
+
             const payload = {
-                ...data,
+
+                title: data.title.trim(),
+
                 amount: Number(data.amount),
-                created_at: new Date(data.created_at).toISOString(),
+
+                transaction_type: data.transaction_type,
+
+                category: data.category.trim(),
+
+                created_at: new Date(
+                    data.created_at
+                ).toISOString(),
+
             };
 
             if (isEdit && transaction) {
-                await updateTransaction(transaction.id, payload);
-                alert("Transaction Updated Successfully!");
+
+                await updateTransaction(
+                    transaction.id,
+                    payload
+                );
+
+                toast.success("Transaction updated successfully!");
+
             } else {
+
                 await addTransaction(payload);
-                alert("Transaction Added Successfully!");
+
+                toast.success("Transaction added successfully!");
+
             }
 
             reset();
+
             onClose();
+
             onSuccess();
-        } catch (err) {
+
+        } catch (err: any) {
+
             console.error(err);
-            alert("Operation Failed");
+
+            toast.error(
+                err?.response?.data?.detail ??
+                err?.message ??
+                "Operation failed."
+            );
+
         }
+
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-
-            <div className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-2xl transition-colors duration-300 dark:bg-slate-800">
-
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+            onClick={onClose}
+        >
+            <div
+                onClick={(e) => e.stopPropagation()}
+                className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-2xl transition-all duration-300 dark:bg-slate-800"
+            >
                 <h2 className="mb-6 text-3xl font-bold text-slate-900 dark:text-white">
                     {isEdit ? "✏️ Edit Transaction" : "➕ Add Transaction"}
                 </h2>
@@ -104,7 +177,6 @@ export default function AddTransactionModal({
                     onSubmit={handleSubmit(onSubmit)}
                     className="space-y-5"
                 >
-
                     {/* Title */}
 
                     <div>
@@ -113,12 +185,23 @@ export default function AddTransactionModal({
                         </label>
 
                         <input
+                            autoFocus
                             {...register("title", {
-                                required: true,
+                                required: "Title is required",
+                                minLength: {
+                                    value: 3,
+                                    message: "Title should be at least 3 characters",
+                                },
                             })}
                             placeholder="Enter title"
                             className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900 transition focus:border-blue-500 focus:outline-none dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-400"
                         />
+
+                        {errors.title && (
+                            <p className="mt-1 text-sm text-red-500">
+                                {errors.title.message}
+                            </p>
+                        )}
                     </div>
 
                     {/* Amount */}
@@ -131,12 +214,23 @@ export default function AddTransactionModal({
                         <input
                             type="number"
                             {...register("amount", {
-                                required: true,
+                                required: "Amount is required",
                                 valueAsNumber: true,
+                                min: {
+                                    value: 1,
+                                    message:
+                                        "Amount must be greater than zero",
+                                },
                             })}
                             placeholder="Enter amount"
                             className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900 transition focus:border-blue-500 focus:outline-none dark:border-slate-600 dark:bg-slate-700 dark:text-white"
                         />
+
+                        {errors.amount && (
+                            <p className="mt-1 text-sm text-red-500">
+                                {errors.amount.message}
+                            </p>
+                        )}
                     </div>
 
                     {/* Transaction Type */}
@@ -150,8 +244,8 @@ export default function AddTransactionModal({
                             {...register("transaction_type")}
                             className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900 transition focus:border-blue-500 focus:outline-none dark:border-slate-600 dark:bg-slate-700 dark:text-white"
                         >
-                            <option value="income">Income</option>
-                            <option value="expense">Expense</option>
+                            <option value="income">💰 Income</option>
+                            <option value="expense">💸 Expense</option>
                         </select>
                     </div>
 
@@ -164,11 +258,22 @@ export default function AddTransactionModal({
 
                         <input
                             {...register("category", {
-                                required: true,
+                                required: "Category is required",
+                                minLength: {
+                                    value: 2,
+                                    message:
+                                        "Category should be at least 2 characters",
+                                },
                             })}
-                            placeholder="Enter category"
+                            placeholder="Food, Salary, Shopping..."
                             className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900 transition focus:border-blue-500 focus:outline-none dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-400"
                         />
+
+                        {errors.category && (
+                            <p className="mt-1 text-sm text-red-500">
+                                {errors.category.message}
+                            </p>
+                        )}
                     </div>
 
                     {/* Date */}
@@ -181,16 +286,21 @@ export default function AddTransactionModal({
                         <input
                             type="date"
                             {...register("created_at", {
-                                required: true,
+                                required: "Date is required",
                             })}
                             className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900 transition focus:border-blue-500 focus:outline-none dark:border-slate-600 dark:bg-slate-700 dark:text-white"
                         />
+
+                        {errors.created_at && (
+                            <p className="mt-1 text-sm text-red-500">
+                                {errors.created_at.message}
+                            </p>
+                        )}
                     </div>
 
                     {/* Buttons */}
 
-                    <div className="flex justify-end gap-4 pt-2">
-
+                    <div className="flex justify-end gap-4 border-t border-slate-200 pt-6 dark:border-slate-700">
                         <button
                             type="button"
                             onClick={onClose}
@@ -201,17 +311,18 @@ export default function AddTransactionModal({
 
                         <button
                             type="submit"
-                            className="rounded-lg bg-blue-600 px-6 py-3 font-medium text-white transition hover:bg-blue-700"
+                            disabled={isSubmitting}
+                            className="rounded-lg bg-blue-600 px-6 py-3 font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                            {isEdit ? "Update" : "Save"}
+                            {isSubmitting
+                                ? "Saving..."
+                                : isEdit
+                                    ? "Update Transaction"
+                                    : "Save Transaction"}
                         </button>
-
                     </div>
-
                 </form>
-
             </div>
-
         </div>
     );
 }

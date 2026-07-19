@@ -193,9 +193,9 @@ export default function Dashboard() {
             =============================================== */
 
             const latestExpense = transactionData
-                .filter((t) => t.transaction_type === "expense")
+                .filter((t: Transaction) => t.transaction_type === "expense")
                 .sort(
-                    (a, b) =>
+                    (a: Transaction, b: Transaction) =>
                         new Date(b.created_at).getTime() -
                         new Date(a.created_at).getTime()
                 )[0];
@@ -225,13 +225,13 @@ export default function Dashboard() {
 
                 const spent = transactionData
                     .filter(
-                        (t) =>
+                        (t: Transaction) =>
                             t.transaction_type === "expense" &&
                             t.category.trim().toLowerCase() ===
                             budget.category.trim().toLowerCase()
                     )
                     .reduce(
-                        (sum, t) => sum + t.amount,
+                        (sum: number, t: Transaction) => sum + t.amount,
                         0
                     );
 

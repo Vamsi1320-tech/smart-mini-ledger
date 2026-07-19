@@ -227,7 +227,8 @@ export default function Dashboard() {
                     .filter(
                         (t) =>
                             t.transaction_type === "expense" &&
-                            t.category === budget.category
+                            t.category.trim().toLowerCase() ===
+                            budget.category.trim().toLowerCase()
                     )
                     .reduce(
                         (sum, t) => sum + t.amount,
@@ -235,34 +236,28 @@ export default function Dashboard() {
                     );
 
                 const percentage =
-                    (spent / budget.limit) * 100;
+                    budget.monthly_limit > 0
+                        ? (spent / budget.monthly_limit) * 100
+                        : 0;
 
                 if (percentage >= 100) {
 
-                    notifyOnce(
+                    console.log("Budget Exceeded Notification Triggered");
 
-                        `budget-exceeded-${budget.id}`,
+                    console.log("Budget Exceeded Triggered");
 
-                        "🚨 Budget Exceeded",
+                    new Notification("🚨 Budget Exceeded", {
+                        body: `${budget.category} budget exceeded.`,
+                    });
 
-                        `${budget.category} budget exceeded.`
+                } else if (percentage >= 80) {
 
-                    );
-
-                }
-
-                else if (percentage >= 80) {
+                    console.log("Budget Warning Notification Triggered");
 
                     notifyOnce(
-
                         `budget-warning-${budget.id}`,
-
-                        "⚠ Budget Warning",
-
-                        `${budget.category} budget is ${percentage.toFixed(
-                            0
-                        )}% used.`
-
+                        "⚠️ Budget Warning",
+                        `${budget.category} budget is ${percentage.toFixed(0)}% used.`
                     );
 
                 }

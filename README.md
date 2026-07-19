@@ -463,3 +463,17 @@ Feel free to fork this repository, create a feature branch, and submit a pull re
 If you found this project useful, consider giving it a ⭐ on GitHub.
 
 ---
+
+# AI Assistance
+
+This project was developed with the assistance of AI tools including ChatGPT.
+
+AI was primarily used to:
+- Generate initial project structure and boilerplate code.
+- Assist with debugging FastAPI and React issues.
+- Suggest improvements to UI components and API design.
+- Help prepare project documentation.
+
+Engineering decisions, feature implementation, deployment, testing, debugging, and final code review were completed manually. During development, several AI-generated suggestions required refinement, including resolving TypeScript build errors, API integration issues, deployment configuration, and improving the overall application architecture and user experience.
+
+---
